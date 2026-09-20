@@ -240,48 +240,52 @@ function restore(index: number) {
                   v-model="draft.systemPrompt"
                   aria-label="System prompt"
                   type="textarea"
-                  :rows="4"
+                  :rows="3"
                   :disabled="stream.busy.value" /></label
               ><label
                 >User prompt template<el-input
                   v-model="draft.userTemplate"
                   aria-label="User prompt template"
                   type="textarea"
-                  :rows="4"
+                  :rows="3"
                   :disabled="stream.busy.value"
               /></label>
-              <div class="content-label">FEW-SHOT EXAMPLES</div>
-              <div v-for="(example, index) in draft.fewShots" :key="index" class="few-shot">
-                <el-input
-                  v-model="example.user"
-                  :aria-label="'Example user ' + index"
-                  type="textarea"
-                  :rows="2"
-                  placeholder="User example"
-                  :disabled="stream.busy.value"
-                /><el-input
-                  v-model="example.assistant"
-                  :aria-label="'Example assistant ' + index"
-                  type="textarea"
-                  :rows="2"
-                  placeholder="Assistant example"
-                  :disabled="stream.busy.value"
-                /><button
-                  class="icon-button"
-                  aria-label="Remove example"
-                  :disabled="stream.busy.value"
-                  @click="draft.fewShots.splice(index, 1)"
+              <details class="examples-disclosure">
+                <summary>
+                  Few-shot examples <span class="tiny-badge">{{ draft.fewShots.length }}</span>
+                </summary>
+                <div v-for="(example, index) in draft.fewShots" :key="index" class="few-shot">
+                  <el-input
+                    v-model="example.user"
+                    :aria-label="'Example user ' + index"
+                    type="textarea"
+                    :rows="2"
+                    placeholder="User example"
+                    :disabled="stream.busy.value"
+                  /><el-input
+                    v-model="example.assistant"
+                    :aria-label="'Example assistant ' + index"
+                    type="textarea"
+                    :rows="2"
+                    placeholder="Assistant example"
+                    :disabled="stream.busy.value"
+                  /><button
+                    class="icon-button"
+                    aria-label="Remove example"
+                    :disabled="stream.busy.value"
+                    @click="draft.fewShots.splice(index, 1)"
+                  >
+                    <Trash2 :size="13" />
+                  </button>
+                </div>
+                <el-button
+                  text
+                  :icon="Plus"
+                  :disabled="stream.busy.value || draft.fewShots.length >= 10"
+                  @click="draft.fewShots.push({ user: '', assistant: '' })"
+                  >Add example</el-button
                 >
-                  <Trash2 :size="13" />
-                </button>
-              </div>
-              <el-button
-                text
-                :icon="Plus"
-                :disabled="stream.busy.value || draft.fewShots.length >= 10"
-                @click="draft.fewShots.push({ user: '', assistant: '' })"
-                >Add example</el-button
-              >
+              </details>
               <div class="form-row prompt-params">
                 <label
                   >Temperature<el-input-number
@@ -356,12 +360,16 @@ function restore(index: number) {
         <FlaskConical :size="30" />
         <h3>Your prompt library is empty</h3>
         <p>Create a prompt to begin.</p>
+        <el-button :icon="Plus" @click="create()">Create a prompt</el-button>
       </section>
       <section v-if="draft" class="panel prompt-test">
         <div class="panel-title">
           <div>
-            <h2>Test playground</h2>
-            <p>{{ settings.settings.model }} · {{ settings.settings.mode }}</p>
+            <h2>Output playground</h2>
+            <p>
+              {{ settings.settings.model }} ·
+              {{ settings.settings.mode === 'mock' ? 'Demo response' : 'Live response' }}
+            </p>
           </div>
           <Play :size="17" class="muted" />
         </div>

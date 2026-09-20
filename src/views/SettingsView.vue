@@ -49,8 +49,8 @@ async function authorize() {
             <div class="settings-title">
               <span class="settings-icon"><Server :size="19" /></span>
               <div>
-                <h2>Connection & provider</h2>
-                <p>All AI requests pass through your local BFF.</p>
+                <h2>Workspace & provider</h2>
+                <p>Choose how your workspace connects to AI.</p>
               </div>
             </div>
             <el-button :icon="RefreshCw" :loading="request.loading.value" @click="check"
@@ -60,14 +60,30 @@ async function authorize() {
           <div class="setting-line">
             <div>
               <strong>Runtime mode</strong>
-              <p>Mock works out of the box. Real uses server credentials.</p>
+              <p>Explore with local demo data, or connect a provider.</p>
             </div>
             <el-radio-group :model-value="store.settings.mode" @change="switchMode"
-              ><el-radio-button value="mock">Mock</el-radio-button
+              ><el-radio-button value="mock">Demo</el-radio-button
               ><el-radio-button value="real" :disabled="!store.health?.realConfigured"
                 >Real API</el-radio-button
               ></el-radio-group
             >
+          </div>
+          <div class="connection-state">
+            <span class="status-dot" :class="{ offline: !store.online }"></span
+            >{{ store.online ? 'BFF connected' : 'BFF offline' }} <span>·</span
+            >{{ store.health?.realConfigured ? 'Real provider configured' : 'Demo provider ready' }}
+          </div>
+        </section>
+        <section class="panel settings-panel">
+          <div class="panel-title">
+            <div class="settings-title">
+              <span class="settings-icon"><Server :size="19" /></span>
+              <div>
+                <h2>Network & access</h2>
+                <p>Connection details and request limits.</p>
+              </div>
+            </div>
           </div>
           <div class="form-stack">
             <label
@@ -112,11 +128,6 @@ async function authorize() {
               ></template
             >
           </div>
-          <div class="connection-state">
-            <span class="status-dot" :class="{ offline: !store.online }"></span
-            >{{ store.online ? 'BFF connected' : 'BFF offline' }} <span>·</span>
-            {{ store.health?.realConfigured ? 'Real provider configured' : 'Mock provider ready' }}
-          </div>
         </section>
         <section class="panel settings-panel">
           <div class="panel-title">
@@ -131,11 +142,13 @@ async function authorize() {
           <div class="theme-options">
             <button
               :class="{ selected: store.settings.theme === 'light' }"
+              :aria-pressed="store.settings.theme === 'light'"
               @click="store.settings.theme = 'light'"
             >
               <Sun :size="21" /><strong>Light</strong><span>Clear, focused workspace</span></button
             ><button
               :class="{ selected: store.settings.theme === 'dark' }"
+              :aria-pressed="store.settings.theme === 'dark'"
               @click="store.settings.theme = 'dark'"
             >
               <Moon :size="21" /><strong>Dark</strong><span>A softer view after hours</span>
@@ -150,7 +163,9 @@ async function authorize() {
               <p>No AI provider key is stored in this browser.</p>
             </div>
           </div>
-          <pre class="json-block">
+          <details class="provider-setup">
+            <summary>Provider setup instructions</summary>
+            <pre class="json-block">
 # server/.env
 ALLOW_REAL_API=true
 AI_API_BASE_URL=https://api.openai.com/v1
@@ -158,11 +173,12 @@ AI_API_KEY=your-server-side-key
 AI_MODELS=your-allowed-model-id
 # Optional local BFF authentication
 BFF_ACCESS_TOKEN=your-workspace-token</pre>
-          <p class="muted">
-            Restart the BFF after editing its environment. AI_API_KEY is never returned through the
-            API. .env files are excluded from Git. This workspace is a local portfolio application,
-            without multi-user authentication or tenant isolation.
-          </p>
+            <p class="muted">
+              Restart the BFF after editing its environment. AI_API_KEY is never returned through
+              the API. .env files are excluded from Git. This workspace is a local portfolio
+              application, without multi-user authentication or tenant isolation.
+            </p>
+          </details>
         </section>
       </div>
       <aside class="panel settings-defaults">

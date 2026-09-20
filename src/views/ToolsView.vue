@@ -5,8 +5,15 @@ import {
   Wrench,
   Workflow,
   Check,
-  Circle,
-  ArrowDown,
+  CircleAlert,
+  LoaderCircle,
+  UserRound,
+  Terminal,
+  FileText,
+  Calculator,
+  TrendingUp,
+  CloudSun,
+  ScanSearch,
   Square,
   RotateCcw,
   Braces,
@@ -14,6 +21,7 @@ import {
 import PageHeading from '../components/PageHeading.vue';
 import RequestFeedback from '../components/RequestFeedback.vue';
 import MarkdownContent from '../components/MarkdownContent.vue';
+import JsonBlock from '../components/JsonBlock.vue';
 import { useRequest } from '../composables/useRequest';
 import { toolsService } from '../services/tools';
 import { routeTool } from '../utils/toolRouting';
@@ -21,7 +29,7 @@ import type { ToolCall, ToolDefinition } from '../types';
 const initial = useRequest();
 const request = useRequest();
 const tools = ref<ToolDefinition[]>([]);
-const input = ref('查询 BTC 当前市场情况');
+const input = ref('Calculate (128 + 64) * 3');
 const selected = ref('auto');
 const argsText = ref('');
 const call = ref<ToolCall>();
@@ -98,13 +106,26 @@ const steps = [
   'Tool result',
   'Final answer',
 ];
+const stepIcons = [UserRound, Workflow, Braces, Terminal, Check, FileText];
+const toolIcons: Record<string, typeof Wrench> = {
+  calculate: Calculator,
+  get_market_data: TrendingUp,
+  get_weather: CloudSun,
+  search_knowledge: ScanSearch,
+};
+function stepStatus(index: number) {
+  if (call.value?.status === 'FAILED' && index === phase.value)
+    return request.state.value === 'ABORTED' ? 'Cancelled' : 'Failed';
+  if (phase.value === 5 || index < phase.value) return 'Complete';
+  return index === phase.value ? 'Running' : 'Pending';
+}
 </script>
 <template>
   <div class="page">
     <PageHeading
       title="Agent Tools"
       description="Make every tool call visible, inspectable, and explainable."
-      ><span class="mode-pill">Explicit demo orchestration</span></PageHeading
+      ><span class="quiet-badge"><Workflow :size="14" /> Observable execution</span></PageHeading
     >
     <div class="tool-cards">
       <button
@@ -115,8 +136,8 @@ const steps = [
         :disabled="request.loading.value"
         @click="choose(tool.name)"
       >
-        <span class="tool-icon"><Wrench :size="18" /></span
-        ><span class="tiny-badge">{{ tool.mock ? 'Mock' : 'Local execution' }}</span>
+        <span class="tool-icon"><component :is="toolIcons[tool.name] || Wrench" :size="18" /></span
+        ><span class="tiny-badge">{{ tool.mock ? 'Demo' : 'Local' }}</span>
         <h3>{{ tool.name }}</h3>
         <p>{{ tool.description }}</p>
         <small>{{ Object.keys(tool.parameters).join(' · ') }}</small>
@@ -161,11 +182,15 @@ const steps = [
               v-model="argsText"
               aria-label="Tool JSON arguments"
               type="textarea"
-              :rows="6"
-              :disabled="request.loading.value" /></label
-          ><el-checkbox v-model="fail" :disabled="request.loading.value"
-            >Simulate tool failure</el-checkbox
-          >
+              :rows="3"
+              :disabled="request.loading.value"
+          /></label>
+          <details class="developer-controls">
+            <summary>Diagnostics</summary>
+            <el-checkbox v-model="fail" :disabled="request.loading.value"
+              >Simulate tool failure</el-checkbox
+            >
+          </details>
         </div>
         <div class="form-actions">
           <el-button
@@ -197,9 +222,13 @@ const steps = [
           @abort="request.abort"
         />
         <div class="notice">
-          This page displays execution status and tool outputs. It does not expose model
-          chain-of-thought. Auto selection and final summaries are deterministic demo logic in both
-          modes.
+          Demo routing and summaries · real local arithmetic. Market and weather results use sample
+          data.
+          <details>
+            <summary>About this workflow</summary>
+            Steps show execution status and tool outputs. Routing and summaries are deterministic in
+            both modes; no model reasoning is exposed.
+          </details>
         </div>
       </section>
       <section class="panel execution-panel">
@@ -211,24 +240,38 @@ const steps = [
           <Workflow :size="35" />
           <h3>From request to result</h3>
           <p>Run a workflow to inspect each step of the tool lifecycle.</p>
+          <button
+            class="text-button"
+            :disabled="!input.trim() || request.loading.value"
+            @click="execute"
+          >
+            Run your first workflow →
+          </button>
         </div>
         <div v-else class="execution-trace">
           <div
             v-for="(step, index) in steps"
             :key="step"
             class="trace-step"
-            :class="{ complete: phase >= index, current: phase === index }"
+            :class="{
+              complete: stepStatus(index) === 'Complete',
+              current: stepStatus(index) === 'Running',
+              failed: stepStatus(index) === 'Failed' || stepStatus(index) === 'Cancelled',
+            }"
           >
             <div class="trace-rail">
               <span
-                ><Check v-if="phase > index || phase === 5" :size="13" /><Circle
-                  v-else
-                  :size="11" /></span
-              ><ArrowDown v-if="index < 5" :size="13" />
+                ><CircleAlert
+                  v-if="stepStatus(index) === 'Failed' || stepStatus(index) === 'Cancelled'"
+                  :size="14" /><LoaderCircle
+                  v-else-if="stepStatus(index) === 'Running'"
+                  :size="14" /><component v-else :is="stepIcons[index]" :size="14"
+              /></span>
             </div>
             <div class="trace-content">
               <div class="trace-title">
                 <strong>{{ step }}</strong
+                ><span class="trace-status">{{ stepStatus(index) }}</span
                 ><small v-if="index === 3 && call.durationMs">{{ call.durationMs }} ms</small>
               </div>
               <p v-if="index === 0">{{ input }}</p>
@@ -236,18 +279,21 @@ const steps = [
                 {{ call.name }} ·
                 {{ selected === 'auto' ? 'Demo keyword router' : 'Explicitly selected' }}
               </p>
-              <pre v-if="index === 2" class="json-block">{{
-                JSON.stringify(call.arguments, null, 2)
-              }}</pre>
+              <details v-if="index === 2">
+                <summary>
+                  <Braces :size="13" /> Arguments · {{ Object.keys(call.arguments).length }} fields
+                </summary>
+                <JsonBlock :value="call.arguments" />
+              </details>
               <p v-if="index === 3">
                 {{ call.status }} <span v-if="call.error">· {{ call.error }}</span>
               </p>
-              <details v-if="index === 4 && call.result" open>
+              <details v-if="index === 4 && call.result">
                 <summary>
                   <Braces :size="13" /> JSON result ·
                   {{ call.result.mock ? 'Mock' : 'Locally computed' }}
                 </summary>
-                <pre class="json-block">{{ JSON.stringify(call.result.output, null, 2) }}</pre>
+                <JsonBlock :value="call.result.output" />
               </details>
               <MarkdownContent v-if="index === 5 && finalAnswer" :content="finalAnswer" />
               <p v-if="phase < index" class="muted">Waiting for previous step</p>

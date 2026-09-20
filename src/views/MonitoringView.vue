@@ -1,14 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import {
-  Activity,
-  CheckCheck,
-  Clock3,
-  Coins,
-  TriangleAlert,
-  RefreshCw,
-  ArrowUpRight,
-} from 'lucide-vue-next';
+import { Activity, CheckCheck, Clock3, Coins, TriangleAlert, RefreshCw } from 'lucide-vue-next';
 import PageHeading from '../components/PageHeading.vue';
 import MetricChart from '../components/MetricChart.vue';
 import RequestFeedback from '../components/RequestFeedback.vue';
@@ -92,7 +84,6 @@ const charts = computed(() => {
         labels,
         days.value.map((d) => d.latency),
         'line',
-        '#b49c72',
       ),
       large: true,
     },
@@ -121,7 +112,6 @@ const charts = computed(() => {
         labels,
         days.value.map((d) => d.retrieval),
         'bar',
-        '#a7bb82',
       ),
       large: true,
     },
@@ -180,6 +170,13 @@ onMounted(load);
       <h3>No activity in this date range</h3>
       <p>Send a message, execute a tool, or enable the synthetic baseline.</p>
     </div>
+    <div
+      v-else-if="request.loading.value && !metrics"
+      class="panel skeleton-card"
+      aria-label="Loading metrics"
+    >
+      <div v-for="n in 6" :key="n" class="skeleton-line"></div>
+    </div>
     <div v-else class="charts-grid">
       <section
         v-for="chart in charts"
@@ -192,7 +189,6 @@ onMounted(load);
             <h2>{{ chart.title }}</h2>
             <p>{{ chart.subtitle }}</p>
           </div>
-          <ArrowUpRight :size="15" class="muted" />
         </div>
         <MetricChart :option="chart.option" :label="chart.title" />
       </section>

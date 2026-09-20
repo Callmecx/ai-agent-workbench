@@ -27,33 +27,36 @@ export function trend(
   labels: string[],
   values: number[],
   type: 'line' | 'bar' = 'line',
-  color = '#779e55',
 ): EChartsCoreOption {
   return {
     tooltip: { trigger: 'axis' },
-    grid: { left: 38, right: 15, top: 18, bottom: 30 },
+    grid: { left: 48, right: 16, top: 16, bottom: 30 },
     xAxis: {
       type: 'category',
       data: labels.map((d) => d.slice(5)),
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { fontSize: 9, color: '#a2ac97' },
+      axisLabel: { fontSize: 11, hideOverlap: true },
     },
     yAxis: {
       type: 'value',
-      splitLine: { lineStyle: { color: '#a7b29a20', type: 'dashed' } },
-      axisLabel: { fontSize: 9, color: '#a2ac97' },
+      splitLine: { lineStyle: { type: 'dashed' } },
+      axisLabel: {
+        fontSize: 11,
+        formatter: (value: number) =>
+          value >= 1000 ? `${Number((value / 1000).toFixed(1))}k` : String(value),
+      },
     },
     series: [
       {
         type,
         data: values,
-        smooth: true,
+        smooth: false,
         symbol: 'none',
         barMaxWidth: 19,
-        itemStyle: { color, borderRadius: [3, 3, 0, 0] },
-        lineStyle: { width: 2, color },
-        areaStyle: type === 'line' ? { color, opacity: 0.08 } : undefined,
+        itemStyle: { borderRadius: [3, 3, 0, 0] },
+        lineStyle: { width: 2 },
+        areaStyle: type === 'line' ? { opacity: 0.06 } : undefined,
       },
     ],
   };
@@ -80,10 +83,11 @@ export function distribution(
     tooltip: { trigger: 'item' },
     legend: {
       bottom: 0,
-      textStyle: { fontSize: 9, color: '#96a18b' },
+      type: 'scroll',
+      textStyle: { fontSize: 11 },
       icon: 'circle',
-      itemWidth: 7,
-      itemHeight: 7,
+      itemWidth: 8,
+      itemHeight: 8,
     },
     series: [
       {

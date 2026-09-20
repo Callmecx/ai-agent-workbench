@@ -89,11 +89,11 @@ async function generate() {
 }
 </script>
 <template>
-  <div class="page">
+  <div class="page retrieval-page">
     <PageHeading
       title="Retrieval Debug"
       description="Follow the evidence from a question to a grounded answer."
-      ><span class="mode-pill">Lexical retrieval · Mock</span></PageHeading
+      ><span class="quiet-badge"><ScanSearch :size="14" /> Lexical retrieval</span></PageHeading
     >
     <div class="notice retrieval-notice">
       <ScanSearch :size="16" /><span
@@ -191,7 +191,10 @@ async function generate() {
           </div>
           <span class="tiny-badge">Top {{ topK }}</span>
         </div>
-        <div v-if="!results.length" class="empty-state">
+        <div v-if="request.loading.value" class="skeleton-card" aria-label="Searching sources">
+          <div v-for="n in 5" :key="n" class="skeleton-line"></div>
+        </div>
+        <div v-else-if="!results.length" class="empty-state">
           <ScanSearch :size="35" />
           <h3>{{ searched ? 'No matching chunks' : 'Every answer starts with context' }}</h3>
           <p>
@@ -201,6 +204,16 @@ async function generate() {
                 : 'Run a search to inspect source text, scores and metadata.'
             }}
           </p>
+          <button
+            v-if="!searched"
+            class="text-button"
+            :disabled="!query.trim() || !knowledge.selectedId"
+            @click="search"
+          >
+            Search your knowledge →</button
+          ><RouterLink v-else to="/knowledge" class="text-button"
+            >Add a relevant source →</RouterLink
+          >
         </div>
         <article v-for="result in results" :key="result.chunk.id" class="retrieval-card">
           <div class="retrieval-card-heading">
@@ -208,9 +221,19 @@ async function generate() {
             ><FileText :size="15" /><strong>{{ result.sourceDocument }}</strong
             ><span class="score">{{ result.score.toFixed(2) }} <small>score</small></span>
           </div>
+          <div
+            class="score-bar"
+            role="meter"
+            aria-label="Lexical match score"
+            :aria-valuenow="result.score"
+            :aria-valuemin="0"
+            :aria-valuemax="1"
+          >
+            <span :style="{ width: result.score * 100 + '%' }"></span>
+          </div>
           <p>{{ result.chunk.text }}</p>
           <details>
-            <summary>{{ result.chunk.id }} · Metadata</summary>
+            <summary>Chunk {{ result.chunk.metadata.index + 1 }} · View metadata</summary>
             <pre class="json-block">{{ JSON.stringify(result.chunk.metadata, null, 2) }}</pre>
           </details>
         </article>
@@ -251,9 +274,7 @@ async function generate() {
         @retry="generate"
         @abort="stream.stop"
       /><MarkdownContent :content="stream.content.value" />
-      <div class="content-label">
-        SOURCES / CITATIONS · RETRIEVED EVIDENCE (NOT AUTOMATICALLY VERIFIED)
-      </div>
+      <div class="content-label">SOURCES · RETRIEVED EVIDENCE</div>
       <div class="citations">
         <div v-for="(citation, i) in citations" :key="citation.chunk.id" class="citation">
           <span>Source {{ i + 1 }}</span

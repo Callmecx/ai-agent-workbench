@@ -32,6 +32,12 @@ const totalChunks = computed(() => store.bases.reduce((s, b) => s + b.chunkCount
 const selected = computed(() => store.bases.find((b) => b.id === store.selectedId));
 const tagType = (status: DocumentStatus) =>
   status === 'READY' ? 'success' : status === 'FAILED' ? 'danger' : 'warning';
+function lastUpdated(baseId: string, createdAt: string) {
+  const dates = store.documents
+    .filter((d) => d.knowledgeBaseId === baseId)
+    .map((d) => d.uploadedAt);
+  return formatDate(dates.sort().at(-1) || createdAt);
+}
 async function poll() {
   if (disposed) return;
   if (store.documents.some((d) => ['PENDING', 'PARSING', 'EMBEDDING'].includes(d.status))) {
@@ -205,9 +211,23 @@ async function deleteDocument(id: string) {
           <div>
             <strong>{{ base.name }}</strong
             ><small>{{ base.documentCount }} documents · {{ base.chunkCount }} chunks</small>
+            <div class="collection-meta">
+              <span class="status-badge" :class="tagType(base.embeddingStatus)">{{
+                base.embeddingStatus === 'READY'
+                  ? 'Ready'
+                  : base.embeddingStatus === 'FAILED'
+                    ? 'Needs attention'
+                    : 'Indexing'
+              }}</span
+              ><small>Updated {{ lastUpdated(base.id, base.createdAt) }}</small>
+            </div>
           </div>
         </button>
-        <div v-if="!store.bases.length" class="empty-inline">Create your first collection.</div>
+        <div v-if="!store.bases.length" class="empty-inline">
+          Create your first collection.<button class="text-button" @click="create">
+            New knowledge base
+          </button>
+        </div>
         <div class="collection-note">
           <Database :size="18" />
           <p>
@@ -241,9 +261,11 @@ async function deleteDocument(id: string) {
           :class="{ dragging, disabled: uploadRequest.loading.value }"
           role="button"
           tabindex="0"
+          :aria-disabled="uploadRequest.loading.value"
           aria-label="Upload documents"
           @click="!uploadRequest.loading.value && fileInput?.click()"
-          @keydown.enter="fileInput?.click()"
+          @keydown.enter="!uploadRequest.loading.value && fileInput?.click()"
+          @keydown.space.prevent="!uploadRequest.loading.value && fileInput?.click()"
           @dragover.prevent="dragging = true"
           @dragleave="dragging = false"
           @drop.prevent="drop"
@@ -276,7 +298,17 @@ async function deleteDocument(id: string) {
             >Refresh</el-button
           >
         </div>
-        <el-table v-if="store.selectedDocuments.length" :data="store.selectedDocuments" row-key="id"
+        <div
+          v-if="request.loading.value && !store.selectedDocuments.length"
+          class="skeleton-card"
+          aria-label="Loading documents"
+        >
+          <div v-for="n in 4" :key="n" class="skeleton-line"></div>
+        </div>
+        <el-table
+          v-else-if="store.selectedDocuments.length"
+          :data="store.selectedDocuments"
+          row-key="id"
           ><el-table-column label="DOCUMENT" min-width="205"
             ><template #default="{ row }"
               ><div class="document-name">
@@ -326,6 +358,9 @@ async function deleteDocument(id: string) {
           <FileText :size="29" />
           <h3>No documents yet</h3>
           <p>Upload a file to watch the indexing pipeline in action.</p>
+          <el-button v-if="selected" :icon="UploadCloud" @click="fileInput?.click()"
+            >Upload a document</el-button
+          ><el-button v-else :icon="Plus" @click="create">Create a collection</el-button>
         </div>
         <div
           v-for="doc in store.selectedDocuments.filter((d) => d.status === 'FAILED')"
