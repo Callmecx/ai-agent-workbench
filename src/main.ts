@@ -1,0 +1,13 @@
+import { createApp } from 'vue';
+import { createPinia } from 'pinia';
+import ElementPlus, { ElMessage } from 'element-plus';
+import 'element-plus/dist/index.css';
+import 'element-plus/theme-chalk/dark/css-vars.css';
+import 'highlight.js/styles/github-dark.css';
+import './assets/main.css';
+import App from './App.vue';
+import router from './router';
+const app = createApp(App);
+app.use(createPinia()).use(router).use(ElementPlus);
+app.config.errorHandler = (error) => { console.error('Component error:', error); ElMessage.error('This view encountered an error. Reload the page to recover.'); };
+app.mount('#app');
