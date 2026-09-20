@@ -14,6 +14,7 @@ import '@fontsource/manrope/latin-800.css';
 import 'element-plus/theme-chalk/dark/css-vars.css';
 import 'highlight.js/styles/github-dark.css';
 import './assets/main.css';
+import './assets/workspaces.css';
 import App from './App.vue';
 import router from './router';
 const app = createApp(App);

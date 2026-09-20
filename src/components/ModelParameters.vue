@@ -11,7 +11,7 @@ const store = useSettingsStore();
         ><el-option
           v-for="model in store.availableModels"
           :key="model.id"
-          :label="model.name"
+          :label="model.name.replace('Mock', 'Demo')"
           :value="model.id"
           :disabled="!model.available" /></el-select
     ></label>

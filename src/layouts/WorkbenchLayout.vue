@@ -9,12 +9,9 @@ import {
   FlaskConical,
   ChartNoAxesCombined,
   Settings2,
-  ChevronDown,
   ChevronRight,
-  ArrowUpRight,
   PanelLeftClose,
   Layers2,
-  CircleHelp,
   Command,
 } from 'lucide-vue-next';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -42,16 +39,26 @@ watch(
 );
 </script>
 <template>
-  <div class="app-shell" :class="{ collapsed }">
+  <div
+    class="app-shell"
+    :class="{ collapsed, 'presentation-mode': route.query.presentation === '1' }"
+  >
+    <button
+      v-if="collapsed"
+      class="sidebar-backdrop"
+      aria-label="Close navigation"
+      @click="collapsed = false"
+    ></button>
     <aside class="sidebar">
       <RouterLink to="/chat" class="brand"
         ><div class="brand-symbol"><Layers2 :size="22" /></div>
-        <span>agent<span class="brand-light">workbench</span></span></RouterLink
+        <span class="brand-text"
+          >AI Agent Workbench<small>Build with understanding.</small></span
+        ></RouterLink
       >
-      <div class="workspace-switch">
-        <div class="workspace-avatar">W</div>
-        <div><strong>Personal workspace</strong><small>Developer edition</small></div>
-        <ChevronDown :size="14" />
+      <div class="workspace-label">
+        <div class="workspace-mark">W</div>
+        <span>Personal workspace</span>
       </div>
       <div class="nav-caption">WORKSPACE</div>
       <nav aria-label="Workspace navigation">
@@ -64,37 +71,30 @@ watch(
       <nav aria-label="Management navigation">
         <RouterLink to="/monitoring" class="nav-link"
           ><ChartNoAxesCombined :size="18" /><span>Monitoring</span></RouterLink
-        ><RouterLink to="/settings" class="nav-link"
-          ><Settings2 :size="18" /><span>Settings</span></RouterLink
         >
       </nav>
       <div class="sidebar-bottom">
-        <div class="sandbox-card">
+        <div class="workspace-note">
           <span class="small-label"
             ><span class="status-dot"></span>
-            {{ settings.settings.mode === 'mock' ? 'YOUR AI SANDBOX' : 'REAL PROVIDER' }}</span
+            {{ settings.settings.mode === 'mock' ? 'DEMO WORKSPACE' : 'LIVE WORKSPACE' }}</span
           >
           <p>
             {{
               settings.settings.mode === 'mock'
-                ? 'Build. Inspect. Iterate.'
+                ? 'Ideas into working systems.'
                 : 'Connected through your BFF.'
             }}
           </p>
           <small>{{
             settings.settings.mode === 'mock'
-              ? 'Everything you need to explore AI workflows, in one place.'
+              ? 'Explore the complete workflow with local demo data.'
               : 'Credentials stay on the server. Requests may incur provider charges.'
-          }}</small
-          ><RouterLink to="/settings">Configure workspace <ArrowUpRight :size="14" /></RouterLink>
+          }}</small>
         </div>
-        <a
-          class="sidebar-help"
-          href="https://github.com/topics/retrieval-augmented-generation"
-          target="_blank"
-          rel="noopener noreferrer"
-          ><CircleHelp :size="16" /> Explore RAG <ArrowUpRight :size="14"
-        /></a>
+        <RouterLink to="/settings" class="nav-link"
+          ><Settings2 :size="18" /><span>Settings</span></RouterLink
+        >
         <div class="sidebar-user">
           <div class="user-avatar">DU</div>
           <div><strong>Demo User</strong><small>Local workspace</small></div>
@@ -121,7 +121,7 @@ watch(
           ><span class="header-divider"></span
           ><span class="token-counter"><Command :size="14" /> {{ formatNumber(total) }} tokens</span
           ><span class="mode-pill">{{
-            settings.settings.mode === 'mock' ? 'Mock mode' : 'Real API'
+            settings.settings.mode === 'mock' ? 'Demo Mode' : 'Live API'
           }}</span>
           <div class="user-avatar small">DU</div>
         </div>

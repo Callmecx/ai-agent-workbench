@@ -16,6 +16,11 @@ import {
   Check,
   MessageSquare,
   X,
+  MoreHorizontal,
+  TrendingUp,
+  ScanSearch,
+  Workflow,
+  PanelLeft,
 } from 'lucide-vue-next';
 import { ElMessage } from 'element-plus/es/components/message/index';
 import { ElMessageBox } from 'element-plus/es/components/message-box/index';
@@ -38,7 +43,40 @@ const { copy } = useClipboard();
 const input = ref('');
 const debouncedLength = ref(0);
 const search = ref('');
-const showConfig = ref(true);
+const showConfig = ref(window.innerWidth > 1100);
+const historyOpen = ref(false);
+const composerInput = ref<HTMLTextAreaElement>();
+const suggestions = [
+  {
+    title: 'Understand the market',
+    detail: 'Frame a market analysis',
+    icon: TrendingUp,
+    prompt: 'Help me structure a market analysis, separating verified facts from assumptions.',
+  },
+  {
+    title: 'Ask your knowledge base',
+    detail: 'Build an answer with evidence',
+    icon: ScanSearch,
+    prompt: 'How can I ground an answer in knowledge base sources and cite the evidence?',
+  },
+  {
+    title: 'Build a tool workflow',
+    detail: 'Connect a question to an action',
+    icon: Workflow,
+    prompt:
+      'Design a tool workflow that validates inputs, handles errors, and explains its result.',
+  },
+  {
+    title: 'Research an idea',
+    detail: 'Turn a question into a plan',
+    icon: FileText,
+    prompt: 'Create a research plan for evaluating a reliable AI assistant.',
+  },
+];
+function useSuggestion(prompt: string) {
+  input.value = prompt;
+  composerInput.value?.focus();
+}
 const messagesEl = ref<HTMLElement>();
 const simulate = ref<'normal' | 'error' | 'timeout'>('normal');
 const busy = computed(() => isBusy(store.state) || request.loading.value);
@@ -78,10 +116,12 @@ async function send(retry = false) {
 async function create() {
   if (busy.value) return;
   await request.run(() => store.create());
+  historyOpen.value = false;
 }
 function select(id: string) {
   if (busy.value) return;
   store.activeId = id;
+  historyOpen.value = false;
   store.state = 'IDLE';
   chat.error.value = undefined;
   chat.localError.value = undefined;
@@ -126,13 +166,15 @@ async function rename() {
   <div class="page chat-page">
     <PageHeading
       title="AI Chat"
-      description="A space to think, build, and explore with your models."
-      ><span class="quiet-badge"><span class="status-dot"></span> Playground</span
-      ><el-button :icon="SlidersHorizontal" @click="showConfig = !showConfig"
+      description="A thoughtful space for questions, context, and better answers."
+      ><el-button
+        :icon="SlidersHorizontal"
+        :aria-expanded="showConfig"
+        @click="showConfig = !showConfig"
         >Configuration</el-button
       ></PageHeading
     >
-    <div class="chat-workspace" :class="{ 'no-config': !showConfig }">
+    <div class="chat-workspace" :class="{ 'no-config': !showConfig, 'history-open': historyOpen }">
       <aside class="conversation-panel">
         <el-button class="new-chat" type="primary" :icon="Plus" :disabled="busy" @click="create"
           >New conversation</el-button
@@ -148,35 +190,37 @@ async function rename() {
           RECENT CONVERSATIONS <span>{{ store.conversations.length }}</span>
         </div>
         <div class="conversation-list">
-          <button
-            v-for="conversation in filtered"
-            :key="conversation.id"
-            class="conversation-item"
-            :class="{ active: store.activeId === conversation.id }"
-            :disabled="busy"
-            @click="select(conversation.id)"
-          >
-            <MessageSquare :size="15" />
-            <div>
-              <strong>{{ conversation.title }}</strong
-              ><small
-                >{{ formatDate(conversation.updatedAt) }}
-                <span
-                  >· {{ conversation.messages.filter((m) => m.role === 'user').length }} turns</span
-                ></small
-              >
-            </div>
-            <span
-              class="delete-conversation"
-              role="button"
-              tabindex="0"
-              aria-label="Delete conversation"
-              @click.stop="remove(conversation.id)"
-              @keydown.enter.stop="remove(conversation.id)"
-              ><Trash2 :size="13"
-            /></span>
-          </button>
-          <div v-if="!filtered.length" class="empty-inline">No conversations yet.</div>
+          <div v-for="conversation in filtered" :key="conversation.id" class="conversation-row">
+            <button
+              class="conversation-item"
+              :class="{ active: store.activeId === conversation.id }"
+              :disabled="busy"
+              @click="select(conversation.id)"
+            >
+              <MessageSquare :size="15" />
+              <div>
+                <strong>{{ conversation.title }}</strong
+                ><small
+                  >{{ formatDate(conversation.updatedAt) }}
+                  <span
+                    >·
+                    {{ conversation.messages.filter((m) => m.role === 'user').length }} turns</span
+                  ></small
+                >
+              </div>
+            </button>
+            <details class="conversation-more">
+              <summary class="icon-button" :aria-label="'Actions for ' + conversation.title">
+                <MoreHorizontal :size="15" />
+              </summary>
+              <button class="conversation-menu" :disabled="busy" @click="remove(conversation.id)">
+                <Trash2 :size="13" /> Delete conversation
+              </button>
+            </details>
+          </div>
+          <div v-if="!filtered.length" class="empty-inline">
+            {{ search ? 'No matching conversations.' : 'Your next idea starts here.' }}
+          </div>
         </div>
         <button
           class="clear-history"
@@ -192,12 +236,15 @@ async function rename() {
       <section class="chat-panel">
         <div class="chat-toolbar">
           <div>
+            <button
+              class="icon-button history-mobile"
+              aria-label="Conversation history"
+              @click="historyOpen = !historyOpen"
+            >
+              <PanelLeft :size="16" />
+            </button>
             <span class="model-avatar"><Sparkles :size="16" /></span
-            ><strong>{{
-              settings.availableModels.find((m) => m.id === settings.settings.model)?.name ||
-              settings.settings.model
-            }}</strong
-            ><span class="tiny-badge">{{ settings.settings.mode }}</span>
+            ><strong>{{ store.active?.title || 'New conversation' }}</strong>
           </div>
           <button class="text-button" :disabled="busy || !store.active" @click="rename">
             Rename
@@ -210,16 +257,26 @@ async function rename() {
           @abort="request.abort"
         />
         <div ref="messagesEl" class="messages-scroll">
-          <div class="conversation-date"><span></span> LOCAL WORKSPACE <span></span></div>
-          <div v-if="!store.active?.messages.length" class="chat-empty">
+          <div
+            v-if="request.loading.value && !store.active"
+            class="skeleton-card"
+            aria-label="Loading conversations"
+          >
+            <div v-for="n in 4" :key="n" class="skeleton-line"></div>
+          </div>
+          <div v-else-if="!store.active?.messages.length" class="chat-empty">
             <div class="empty-spark"><Sparkles :size="28" /></div>
-            <h2>What will you build today?</h2>
-            <p>Explore an idea. Debug a workflow. Ask a better question.</p>
+            <div class="eyebrow">YOUR NEXT IDEA STARTS HERE</div>
+            <h2>What will you explore today?</h2>
+            <p>Bring a question. Add a little context. See where it takes you.</p>
             <div class="suggestion-grid">
-              <button @click="input = 'How should we build a reliable RAG workflow?'">
-                Design a RAG workflow <ArrowUpRight :size="16" /></button
-              ><button @click="input = 'Explain streaming and request cancellation in Vue 3.'">
-                Explore streaming UX <ArrowUpRight :size="16" />
+              <button
+                v-for="suggestion in suggestions"
+                :key="suggestion.title"
+                @click="useSuggestion(suggestion.prompt)"
+              >
+                <component :is="suggestion.icon" :size="18" /><strong>{{ suggestion.title }}</strong
+                ><small>{{ suggestion.detail }}</small>
               </button>
             </div>
           </div>
@@ -228,7 +285,14 @@ async function rename() {
               <summary><SlidersHorizontal :size="12" /> System instructions</summary>
               <p>{{ message.content }}</p>
             </details>
-            <article v-else class="message" :class="message.role">
+            <article
+              v-else
+              class="message"
+              :class="[
+                message.role,
+                { failed: message.status === 'ERROR' || message.status === 'ABORTED' },
+              ]"
+            >
               <div class="message-avatar" :class="message.role">
                 <Sparkles v-if="message.role === 'assistant'" :size="17" /><span
                   v-else-if="message.role === 'user'"
@@ -309,9 +373,13 @@ async function rename() {
               send(true);
             "
           />
-          <div class="composer">
+          <div
+            class="composer"
+            :class="{ 'is-streaming': busy, 'has-error': store.state === 'ERROR' }"
+          >
             <textarea
               v-model="input"
+              ref="composerInput"
               data-testid="chat-input"
               aria-label="Message"
               placeholder="Ask anything, or start with an idea…"
@@ -321,14 +389,25 @@ async function rename() {
               @keydown="keydown"
             ></textarea>
             <div class="composer-bottom">
-              <div class="composer-hint">
-                <Sparkles :size="14" /><span>{{
-                  settings.settings.mode === 'mock'
-                    ? 'Mock responses · no API key needed'
-                    : 'Real provider · server credentials'
-                }}</span>
-              </div>
+              <RouterLink
+                to="/retrieval"
+                class="context-link"
+                title="Inspect knowledge sources and generate a grounded answer"
+                ><Plus :size="15" /> Context</RouterLink
+              >
               <div class="composer-controls">
+                <el-select
+                  v-model="settings.settings.model"
+                  class="composer-model"
+                  aria-label="Composer model"
+                  :disabled="busy"
+                  ><el-option
+                    v-for="model in settings.availableModels"
+                    :key="model.id"
+                    :label="model.name.replace('Mock', 'Demo')"
+                    :value="model.id"
+                    :disabled="!model.available"
+                /></el-select>
                 <button
                   v-if="input"
                   class="icon-button"
@@ -360,14 +439,24 @@ async function rename() {
             <span
               >Enter to send <span class="keyboard-separator">·</span> Shift + Enter for a new
               line</span
-            ><span>Verify important information.</span>
+            ><span>{{
+              settings.settings.mode === 'mock'
+                ? 'Demo responses · local data'
+                : 'Verify important information.'
+            }}</span>
           </div>
         </div>
       </section>
       <aside v-if="showConfig" class="config-panel">
         <div class="panel-heading">
           <SlidersHorizontal :size="16" /><strong>Configuration</strong
-          ><span class="tiny-badge">Live</span>
+          ><button
+            class="icon-button config-close"
+            aria-label="Close configuration"
+            @click="showConfig = false"
+          >
+            <X :size="16" />
+          </button>
         </div>
         <ModelParameters :disabled="busy" />
         <div class="config-section">
@@ -396,8 +485,8 @@ async function rename() {
             }}
           </p>
         </div>
-        <div class="config-section">
-          <div class="section-label">DEVELOPER CONTROLS</div>
+        <details class="developer-controls">
+          <summary>Diagnostics</summary>
           <label class="field-label"
             >Next request behavior<el-select
               v-model="simulate"
@@ -411,7 +500,7 @@ async function rename() {
           ><span class="request-state" :class="store.state.toLowerCase()"
             ><span class="status-dot"></span>{{ store.state }}</span
           >
-        </div>
+        </details>
         <div class="tip-card">
           <Sparkles :size="17" /><strong>Good context, better answers.</strong>
           <p>Use Retrieval Debug to inspect your sources before generating an answer.</p>
