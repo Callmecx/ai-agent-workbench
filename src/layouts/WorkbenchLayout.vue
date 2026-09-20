@@ -53,7 +53,7 @@ watch(
       <RouterLink to="/chat" class="brand"
         ><div class="brand-symbol"><Layers2 :size="22" /></div>
         <span class="brand-text"
-          >AI Agent Workbench<small>Build with understanding.</small></span
+          >AI Agent Workbench<small>Your AI workspace.</small></span
         ></RouterLink
       >
       <div class="workspace-label">

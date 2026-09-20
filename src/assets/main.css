@@ -975,7 +975,9 @@ textarea {
   background: var(--surface-primary);
   box-shadow: 0 0 0 1px var(--border-default) inset;
 }
-.el-select__wrapper { width: 100%; }
+.el-select__wrapper {
+  width: 100%;
+}
 .el-input__inner,
 .el-select__placeholder,
 .el-range-input {

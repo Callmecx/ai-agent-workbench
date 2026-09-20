@@ -12,13 +12,13 @@ test('seven routes render, refresh, and remain free of runtime errors', async ({
     ['monitoring', 'Monitoring'],
     ['settings', 'Settings'],
   ];
-  mkdirSync('docs/screenshots', { recursive: true });
+  mkdirSync('test-results/smoke', { recursive: true });
   for (const [route, heading] of routes) {
     await page.goto(`/${route}`);
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
     await expect(page.getByText('API connected', { exact: true })).toBeVisible();
     if (route === 'monitoring') await expect(page.locator('canvas').first()).toBeVisible();
-    await page.screenshot({ path: `docs/screenshots/${route}.png`, fullPage: true });
+    await page.screenshot({ path: `test-results/smoke/${route}.png`, fullPage: true });
     await page.reload();
     await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible();
   }
@@ -49,10 +49,12 @@ test('chat streams, stops, retries, persists and switches conversations', async 
 test('mock failure is recoverable with Retry', async ({ page }) => {
   await page.goto('/chat');
   await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+  await page.getByText('Diagnostics', { exact: true }).click();
   await page.getByRole('combobox', { name: 'Next request behavior' }).press('Enter');
   await page.getByRole('option', { name: 'Simulate provider error' }).click();
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Test retry recovery');
   await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await page.getByText('Show details', { exact: true }).click();
   await expect(page.getByText('MOCK_ERROR', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.getByText('Streaming response', { exact: true })).toBeVisible();
@@ -96,9 +98,11 @@ test('tool workflow succeeds, fails and recovers', async ({ page }) => {
   await page.getByRole('button', { name: /calculate/ }).click();
   await page.getByRole('button', { name: 'Run workflow' }).click();
   await expect(page.getByText('Calculation complete', { exact: true })).toBeVisible();
-  await expect(page.getByText('576', { exact: true })).toBeVisible();
+  await expect(page.locator('.trace-step').last().getByText('576', { exact: true })).toBeVisible();
+  await page.getByText('Diagnostics', { exact: true }).click();
   await page.getByText('Simulate tool failure', { exact: true }).click();
   await page.getByRole('button', { name: 'Run workflow' }).click();
+  await page.getByText('Show details', { exact: true }).click();
   await expect(page.getByText('TOOL_FAILED', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Retry', exact: true }).click();
   await expect(page.getByText('Calculation complete', { exact: true })).toBeVisible();
@@ -132,7 +136,7 @@ test('settings theme and mobile navigation work', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Knowledge Base', exact: true })).toBeVisible();
   await page.getByRole('link', { name: 'Knowledge Base', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Knowledge Base', exact: true })).toBeVisible();
-  await page.screenshot({ path: 'docs/screenshots/mobile.png', fullPage: true });
+  await page.screenshot({ path: 'test-results/smoke/mobile.png', fullPage: true });
 });
 test('chat timeout has explicit state and can be retried', async ({ page }) => {
   await page.goto('/settings');
@@ -140,10 +144,12 @@ test('chat timeout has explicit state and can be retried', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'Request timeout' }).press('Tab');
   await page.goto('/chat');
   await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+  await page.getByText('Diagnostics', { exact: true }).click();
   await page.getByRole('combobox', { name: 'Next request behavior' }).press('Enter');
   await page.getByRole('option', { name: 'Simulate timeout' }).click();
   await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Timeout recovery test');
   await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await page.getByText('Show details', { exact: true }).click();
   await expect(page.getByText('TIMEOUT', { exact: true })).toBeVisible();
   await page.goto('/settings');
   await page.getByRole('spinbutton', { name: 'Request timeout' }).fill('60000');

@@ -71,6 +71,8 @@ function update() {
     {
       ...option,
       backgroundColor: 'transparent',
+      animation: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      animationDuration: 300,
       color: ['--accent-primary', '--info', '--text-tertiary', '--accent-border', '--success'].map(
         token,
       ),
@@ -103,10 +105,3 @@ onBeforeUnmount(() => {
 });
 </script>
 <template><div ref="element" class="metric-chart" role="img" :aria-label="label"></div></template>
-<style scoped>
-.metric-chart {
-  height: 210px;
-  width: 100%;
-  min-width: 0;
-}
-</style>

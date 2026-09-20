@@ -212,13 +212,18 @@ async function deleteDocument(id: string) {
             <strong>{{ base.name }}</strong
             ><small>{{ base.documentCount }} documents · {{ base.chunkCount }} chunks</small>
             <div class="collection-meta">
-              <span class="status-badge" :class="tagType(base.embeddingStatus)">{{
-                base.embeddingStatus === 'READY'
-                  ? 'Ready'
-                  : base.embeddingStatus === 'FAILED'
-                    ? 'Needs attention'
-                    : 'Indexing'
-              }}</span
+              <span
+                class="status-badge"
+                :class="base.documentCount ? tagType(base.embeddingStatus) : ''"
+                >{{
+                  !base.documentCount
+                    ? 'Empty'
+                    : base.embeddingStatus === 'READY'
+                      ? 'Ready'
+                      : base.embeddingStatus === 'FAILED'
+                        ? 'Needs attention'
+                        : 'Indexing'
+                }}</span
               ><small>Updated {{ lastUpdated(base.id, base.createdAt) }}</small>
             </div>
           </div>

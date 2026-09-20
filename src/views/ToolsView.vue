@@ -121,7 +121,7 @@ function stepStatus(index: number) {
 }
 </script>
 <template>
-  <div class="page">
+  <div class="page agent-page">
     <PageHeading
       title="Agent Tools"
       description="Make every tool call visible, inspectable, and explainable."
@@ -164,7 +164,7 @@ function stepStatus(index: number) {
               v-model="input"
               aria-label="Agent request"
               type="textarea"
-              :rows="3"
+              :rows="2"
               :disabled="request.loading.value" /></label
           ><label
             >Tool selection<el-select
@@ -221,15 +221,12 @@ function stepStatus(index: number) {
           "
           @abort="request.abort"
         />
-        <div class="notice">
-          Demo routing and summaries · real local arithmetic. Market and weather results use sample
-          data.
-          <details>
-            <summary>About this workflow</summary>
-            Steps show execution status and tool outputs. Routing and summaries are deterministic in
-            both modes; no model reasoning is exposed.
-          </details>
-        </div>
+        <details class="notice">
+          <summary>Demo routing · about this workflow</summary>
+          <p>Market and weather results use sample data. Arithmetic executes locally.</p>
+          Steps show execution status and tool outputs. Routing and summaries are deterministic in
+          both modes; no model reasoning is exposed.
+        </details>
       </section>
       <section class="panel execution-panel">
         <div class="panel-title">
@@ -265,7 +262,7 @@ function stepStatus(index: number) {
                   v-if="stepStatus(index) === 'Failed' || stepStatus(index) === 'Cancelled'"
                   :size="14" /><LoaderCircle
                   v-else-if="stepStatus(index) === 'Running'"
-                  :size="14" /><component v-else :is="stepIcons[index]" :size="14"
+                  :size="14" /><component :is="stepIcons[index]" v-else :size="14"
               /></span>
             </div>
             <div class="trace-content">
@@ -281,7 +278,8 @@ function stepStatus(index: number) {
               </p>
               <details v-if="index === 2">
                 <summary>
-                  <Braces :size="13" /> Arguments · {{ Object.keys(call.arguments).length }} fields
+                  <Braces :size="13" /> Arguments · {{ Object.keys(call.arguments).length }}
+                  {{ Object.keys(call.arguments).length === 1 ? 'field' : 'fields' }}
                 </summary>
                 <JsonBlock :value="call.arguments" />
               </details>

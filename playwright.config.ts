@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
+  testMatch: 'workbench.spec.ts',
+  outputDir: 'test-results/smoke-run',
   fullyParallel: false,
   workers: 1,
   timeout: 45000,

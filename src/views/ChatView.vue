@@ -378,8 +378,8 @@ async function rename() {
             :class="{ 'is-streaming': busy, 'has-error': store.state === 'ERROR' }"
           >
             <textarea
-              v-model="input"
               ref="composerInput"
+              v-model="input"
               data-testid="chat-input"
               aria-label="Message"
               placeholder="Ask anything, or start with an idea…"

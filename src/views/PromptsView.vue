@@ -240,14 +240,14 @@ function restore(index: number) {
                   v-model="draft.systemPrompt"
                   aria-label="System prompt"
                   type="textarea"
-                  :rows="3"
+                  :rows="2"
                   :disabled="stream.busy.value" /></label
               ><label
                 >User prompt template<el-input
                   v-model="draft.userTemplate"
                   aria-label="User prompt template"
                   type="textarea"
-                  :rows="3"
+                  :rows="2"
                   :disabled="stream.busy.value"
               /></label>
               <details class="examples-disclosure">
@@ -374,14 +374,16 @@ function restore(index: number) {
           <Play :size="17" class="muted" />
         </div>
         <div class="form-stack">
-          <label v-for="key in variableKeys" :key="key"
-            >{{ key
-            }}<el-input
-              v-model="draft.variables[key]"
-              :aria-label="'Variable ' + key"
-              :placeholder="`Value for ${key}`"
-              :disabled="stream.busy.value"
-          /></label>
+          <div class="prompt-variables">
+            <label v-for="key in variableKeys" :key="key"
+              >{{ key
+              }}<el-input
+                v-model="draft.variables[key]"
+                :aria-label="'Variable ' + key"
+                :placeholder="`Value for ${key}`"
+                :disabled="stream.busy.value"
+            /></label>
+          </div>
           <div class="new-variable">
             <el-input
               v-model="newVariable"
@@ -416,8 +418,9 @@ function restore(index: number) {
           <pre class="json-block">{{ rendered }}</pre></template
         ><template v-if="stream.content.value"
           ><div class="content-label">MODEL RESPONSE</div>
-          <MarkdownContent :content="stream.content.value"
-        /></template>
+          <div class="prompt-response" tabindex="0" aria-label="Model response">
+            <MarkdownContent :content="stream.content.value" /></div
+        ></template>
         <div v-if="stream.result.value" class="test-metrics">
           <span
             >{{ stream.result.value.usage.totalTokens }} tokens
