@@ -205,3 +205,13 @@ describe('safe tool execution', () => {
     expect(failed.body.error.code).toBe('TOOL_FAILED');
   });
 });
+describe('rate limit', () => {
+  it('returns a structured 429 after the configured per-IP budget', async () => {
+    let response = await request(app).get('/api/health');
+    for (let i = 0; i < 205 && response.status !== 429; i++)
+      response = await request(app).get('/api/health');
+    expect(response.status).toBe(429);
+    expect(response.body.error.code).toBe('RATE_LIMITED');
+    expect(response.body.requestId).toBeTruthy();
+  });
+});

@@ -1,7 +1,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { Database, Plus, FileText, Layers, CheckCheck, UploadCloud, Pencil, Trash2, RefreshCw, FolderOpen } from 'lucide-vue-next';
-import { ElMessageBox } from 'element-plus';
+import {
+  Database,
+  Plus,
+  FileText,
+  Layers,
+  CheckCheck,
+  UploadCloud,
+  Pencil,
+  Trash2,
+  RefreshCw,
+  FolderOpen,
+} from 'lucide-vue-next';
+import { ElMessageBox } from 'element-plus/es/components/message-box/index';
 import PageHeading from '../components/PageHeading.vue';
 import RequestFeedback from '../components/RequestFeedback.vue';
 import { useKnowledgeStore } from '../stores/knowledgeStore';
@@ -9,22 +20,487 @@ import { useRequest } from '../composables/useRequest';
 import { knowledgeService } from '../services/knowledge';
 import { formatDate } from '../utils/context';
 import type { DocumentStatus } from '../types';
-const store = useKnowledgeStore(); const request = useRequest(); const uploadRequest = useRequest(); const fileInput = ref<HTMLInputElement>(); const dragging = ref(false); const pollController = new AbortController(); let pollTimer: number | undefined; let disposed = false;
-const totalChunks = computed(() => store.bases.reduce((s, b) => s + b.chunkCount, 0)); const selected = computed(() => store.bases.find((b) => b.id === store.selectedId));
-const tagType = (status: DocumentStatus) => status === 'READY' ? 'success' : status === 'FAILED' ? 'danger' : 'warning';
-async function poll() { if (disposed) return; if (store.documents.some((d) => ['PENDING', 'PARSING', 'EMBEDDING'].includes(d.status))) { try { await store.load(pollController.signal); } catch { /* Interactive retry remains available. */ } } if (!disposed) pollTimer = window.setTimeout(poll, 1200); }
-async function load() { await request.run((signal) => store.load(signal)); }
-onMounted(async () => { await load(); void poll(); }); onBeforeUnmount(() => { disposed = true; clearTimeout(pollTimer); pollController.abort(); });
-async function create() { try { const { value } = await ElMessageBox.prompt('Give this collection a name.', 'New knowledge base', { inputPlaceholder: 'e.g. Engineering handbook', inputValidator: (v) => !!v?.trim() || 'A name is required.' }); await request.run(async (signal) => { const base = await knowledgeService.create(value.trim()); await store.load(signal); store.selectedId = base.id; }); } catch { /* Cancelled */ } }
-async function rename() { if (!selected.value) return; try { const { value } = await ElMessageBox.prompt('Knowledge base name', 'Rename collection', { inputValue: selected.value.name, inputValidator: (v) => !!v?.trim() || 'A name is required.' }); await request.run(async (signal) => { await knowledgeService.rename(store.selectedId, value.trim()); await store.load(signal); }); } catch { /* Cancelled */ } }
-async function remove() { try { await ElMessageBox.confirm('Delete this collection and all its documents?', 'Delete knowledge base', { type: 'warning' }); await request.run(async (signal) => { await knowledgeService.remove(store.selectedId); await store.load(signal); }); } catch { /* Cancelled */ } }
-async function uploadFiles(files: FileList | File[]) { if (uploadRequest.loading.value || !store.selectedId) return; const baseId = store.selectedId; await uploadRequest.run(async (signal) => { for (const file of Array.from(files)) { if (signal.aborted) return; await knowledgeService.upload(baseId, file, signal); } await store.load(signal); }); if (fileInput.value) fileInput.value.value = ''; }
-function fileChange(event: Event) { const files = (event.target as HTMLInputElement).files; if (files) void uploadFiles(files); }
-function drop(event: DragEvent) { dragging.value = false; if (event.dataTransfer?.files) void uploadFiles(event.dataTransfer.files); }
-async function retry(id: string) { await request.run(async (signal) => { await knowledgeService.retry(id); await store.load(signal); }); }
-async function deleteDocument(id: string) { await request.run(async (signal) => { await knowledgeService.removeDocument(id); await store.load(signal); }); }
+const store = useKnowledgeStore();
+const request = useRequest();
+const uploadRequest = useRequest();
+const fileInput = ref<HTMLInputElement>();
+const dragging = ref(false);
+const pollController = new AbortController();
+let pollTimer: number | undefined;
+let disposed = false;
+const totalChunks = computed(() => store.bases.reduce((s, b) => s + b.chunkCount, 0));
+const selected = computed(() => store.bases.find((b) => b.id === store.selectedId));
+const tagType = (status: DocumentStatus) =>
+  status === 'READY' ? 'success' : status === 'FAILED' ? 'danger' : 'warning';
+async function poll() {
+  if (disposed) return;
+  if (store.documents.some((d) => ['PENDING', 'PARSING', 'EMBEDDING'].includes(d.status))) {
+    try {
+      await store.load(pollController.signal);
+    } catch {
+      /* Interactive retry remains available. */
+    }
+  }
+  if (!disposed) pollTimer = window.setTimeout(poll, 1200);
+}
+async function load() {
+  await request.run((signal) => store.load(signal));
+}
+onMounted(async () => {
+  await load();
+  void poll();
+});
+onBeforeUnmount(() => {
+  disposed = true;
+  clearTimeout(pollTimer);
+  pollController.abort();
+});
+async function create() {
+  try {
+    const { value } = await ElMessageBox.prompt(
+      'Give this collection a name.',
+      'New knowledge base',
+      {
+        inputPlaceholder: 'e.g. Engineering handbook',
+        inputValidator: (v) => !!v?.trim() || 'A name is required.',
+      },
+    );
+    await request.run(async (signal) => {
+      const base = await knowledgeService.create(value.trim());
+      await store.load(signal);
+      store.selectedId = base.id;
+    });
+  } catch {
+    /* Cancelled */
+  }
+}
+async function rename() {
+  if (!selected.value) return;
+  try {
+    const { value } = await ElMessageBox.prompt('Knowledge base name', 'Rename collection', {
+      inputValue: selected.value.name,
+      inputValidator: (v) => !!v?.trim() || 'A name is required.',
+    });
+    await request.run(async (signal) => {
+      await knowledgeService.rename(store.selectedId, value.trim());
+      await store.load(signal);
+    });
+  } catch {
+    /* Cancelled */
+  }
+}
+async function remove() {
+  try {
+    await ElMessageBox.confirm(
+      'Delete this collection and all its documents?',
+      'Delete knowledge base',
+      { type: 'warning' },
+    );
+    await request.run(async (signal) => {
+      await knowledgeService.remove(store.selectedId);
+      await store.load(signal);
+    });
+  } catch {
+    /* Cancelled */
+  }
+}
+async function uploadFiles(files: FileList | File[]) {
+  if (uploadRequest.loading.value || !store.selectedId) return;
+  const baseId = store.selectedId;
+  await uploadRequest.run(async (signal) => {
+    for (const file of Array.from(files)) {
+      if (signal.aborted) return;
+      await knowledgeService.upload(baseId, file, signal);
+    }
+    await store.load(signal);
+  });
+  if (fileInput.value) fileInput.value.value = '';
+}
+function fileChange(event: Event) {
+  const files = (event.target as HTMLInputElement).files;
+  if (files) void uploadFiles(files);
+}
+function drop(event: DragEvent) {
+  dragging.value = false;
+  if (event.dataTransfer?.files) void uploadFiles(event.dataTransfer.files);
+}
+async function retry(id: string) {
+  await request.run(async (signal) => {
+    await knowledgeService.retry(id);
+    await store.load(signal);
+  });
+}
+async function deleteDocument(id: string) {
+  await request.run(async (signal) => {
+    await knowledgeService.removeDocument(id);
+    await store.load(signal);
+  });
+}
 </script>
-<template><div class="page"><PageHeading title="Knowledge Base" description="Organize your sources. Give your AI the context it needs."><el-button type="primary" :icon="Plus" :disabled="request.loading.value" @click="create">New knowledge base</el-button></PageHeading><div class="stat-grid"><div v-for="stat in [{ label: 'Knowledge bases', value: store.bases.length, icon: Database, note: 'Independent document collections' }, { label: 'Documents', value: store.documents.length, icon: FileText, note: 'PDF, TXT and Markdown' }, { label: 'Indexed chunks', value: totalChunks, icon: Layers, note: 'Traceable, overlapping text segments' }, { label: 'Ready documents', value: store.documents.filter(d => d.status === 'READY').length, icon: CheckCheck, note: 'Mock embedding lifecycle' }]" :key="stat.label" class="stat-card"><div class="stat-label">{{ stat.label }}<component :is="stat.icon" :size="16" /></div><div class="stat-value">{{ stat.value }}</div><div class="stat-note">{{ stat.note }}</div></div></div><RequestFeedback :state="request.state.value" :error="request.error.value" @retry="load" @abort="request.abort" />
-  <div class="knowledge-layout"><aside class="panel collections"><div class="panel-title"><h2>Collections</h2><span class="tiny-badge">{{ store.bases.length }}</span></div><button v-for="base in store.bases" :key="base.id" class="collection" :class="{ selected: store.selectedId === base.id }" @click="store.selectedId = base.id"><div class="collection-icon"><FolderOpen :size="19" /></div><div><strong>{{ base.name }}</strong><small>{{ base.documentCount }} documents · {{ base.chunkCount }} chunks</small></div></button><div v-if="!store.bases.length" class="empty-inline">Create your first collection.</div><div class="collection-note"><Database :size="18" /><p>Your files stay in this local workspace. Embedding and PDF extraction are simulated.</p></div></aside>
-  <section class="panel documents"><div class="panel-title"><div><h2>{{ selected?.name || 'Your knowledge starts here' }}</h2><p>{{ selected?.description || 'Create a collection to add documents.' }}</p></div><div v-if="selected" class="document-actions"><el-button :icon="Pencil" aria-label="Rename knowledge base" :disabled="request.loading.value" @click="rename" /><el-button :icon="Trash2" aria-label="Delete knowledge base" :disabled="request.loading.value" @click="remove" /></div></div><div v-if="selected" class="upload-zone" :class="{ dragging, disabled: uploadRequest.loading.value }" role="button" tabindex="0" aria-label="Upload documents" @click="!uploadRequest.loading.value && fileInput?.click()" @keydown.enter="fileInput?.click()" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="drop"><UploadCloud :size="28" /><strong>{{ uploadRequest.loading.value ? 'Uploading documents…' : 'Drop your documents here, or browse files' }}</strong><span>PDF, TXT, MD · up to 5 MB per file</span><input ref="fileInput" type="file" hidden multiple accept=".pdf,.txt,.md" data-testid="knowledge-upload" @change="fileChange" /></div><RequestFeedback :state="uploadRequest.state.value" :error="uploadRequest.error.value" @retry="fileInput?.click()" @abort="uploadRequest.abort" /><div v-if="selected" class="documents-toolbar"><span>{{ store.selectedDocuments.length }} documents</span><el-button text :icon="RefreshCw" :disabled="request.loading.value" @click="load">Refresh</el-button></div><el-table v-if="store.selectedDocuments.length" :data="store.selectedDocuments" row-key="id"><el-table-column label="DOCUMENT" min-width="205"><template #default="{ row }"><div class="document-name"><FileText :size="17" /><div><strong>{{ row.name }}</strong><small>{{ row.type }} · {{ (row.size / 1024).toFixed(1) }} KB · {{ formatDate(row.uploadedAt) }}</small></div></div></template></el-table-column><el-table-column label="PARSING" min-width="105"><template #default="{ row }"><el-tag :type="tagType(row.status)" effect="plain" size="small">{{ row.status }}</el-tag></template></el-table-column><el-table-column label="CHUNKS" prop="chunkCount" width="78" /><el-table-column label="EMBEDDING" min-width="110"><template #default="{ row }"><el-tag :type="tagType(row.embeddingStatus)" effect="plain" size="small">{{ row.embeddingStatus }}</el-tag></template></el-table-column><el-table-column label="" width="77"><template #default="{ row }"><button v-if="row.status === 'FAILED'" class="icon-button" aria-label="Retry parsing" :disabled="request.loading.value" @click="retry(row.id)"><RefreshCw :size="14" /></button><button class="icon-button" aria-label="Delete document" :disabled="request.loading.value" @click="deleteDocument(row.id)"><Trash2 :size="14" /></button></template></el-table-column></el-table><div v-else class="empty-state"><FileText :size="29" /><h3>No documents yet</h3><p>Upload a file to watch the indexing pipeline in action.</p></div><div v-for="doc in store.selectedDocuments.filter(d => d.status === 'FAILED')" :key="doc.id" class="error-panel"><p><strong>{{ doc.name }}</strong><br />{{ doc.error }}</p><el-button size="small" @click="retry(doc.id)">Retry parsing</el-button></div><div class="pipeline"><span v-for="(step, index) in ['Upload', 'Parse', 'Chunk', 'Mock embedding', 'Ready']" :key="step"><span class="pipeline-number">{{ index + 1 }}</span>{{ step }}</span></div></section></div></div></template>
-<style scoped>.knowledge-layout{display:grid;grid-template-columns:265px minmax(0,1fr);gap:22px}.collections{padding:22px 15px;display:flex;flex-direction:column}.collections .panel-title{padding:0 7px}.collection{display:flex;align-items:center;gap:10px;border:1px solid transparent;background:transparent;text-align:left;border-radius:7px;padding:14px 10px;margin:3px 0}.collection.selected{background:var(--green-soft);border-color:var(--border)}.collection-icon{padding:8px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:#8ca170}.collection strong{font-size:11px;display:block;font-weight:500;overflow-wrap:anywhere}.collection small{font-size:9px;color:var(--muted);display:block;margin-top:6px}.collection-note{margin-top:auto;padding:35px 8px 5px;color:#96a485;font-size:10px;line-height:1.9}.collection-note p{margin-top:9px}.document-actions{display:flex;gap:6px}.document-actions .el-button{margin:0;padding:7px}.upload-zone{border:1px dashed #cdd8bb;background:var(--surface-subtle);border-radius:8px;display:flex;align-items:center;flex-direction:column;padding:30px 15px;color:#8b9f71;cursor:pointer}.upload-zone.dragging{background:var(--green-soft);border-color:var(--green)}.upload-zone.disabled{opacity:.5;pointer-events:none}.upload-zone strong{font-size:12px;font-weight:500;color:#748760;margin:11px 0 7px}.upload-zone span{font-size:10px;color:#a3ae93}.documents-toolbar{display:flex;justify-content:space-between;align-items:center;margin:22px 0 5px;color:#8b9780;font-size:11px}.document-name{display:flex;align-items:center;gap:9px;padding:9px 0}.document-name strong{font-size:11px;font-weight:500;display:block}.document-name small{font-size:9px;display:block;color:#a4ae97;margin-top:4px}.pipeline{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid var(--border);margin-top:25px;padding-top:23px;font-size:9px;color:#9aa88a}.pipeline>span{display:flex;gap:6px;align-items:center}.pipeline-number{border:1px solid #dfe5d5;border-radius:50%;width:20px;height:20px;display:grid;place-items:center;font-size:8px}@media(max-width:1000px){.knowledge-layout{grid-template-columns:1fr}.collections{display:none}}</style>
+<template>
+  <div class="page">
+    <PageHeading
+      title="Knowledge Base"
+      description="Organize your sources. Give your AI the context it needs."
+      ><el-button type="primary" :icon="Plus" :disabled="request.loading.value" @click="create"
+        >New knowledge base</el-button
+      ></PageHeading
+    >
+    <div class="stat-grid">
+      <div
+        v-for="stat in [
+          {
+            label: 'Knowledge bases',
+            value: store.bases.length,
+            icon: Database,
+            note: 'Independent document collections',
+          },
+          {
+            label: 'Documents',
+            value: store.documents.length,
+            icon: FileText,
+            note: 'PDF, TXT and Markdown',
+          },
+          {
+            label: 'Indexed chunks',
+            value: totalChunks,
+            icon: Layers,
+            note: 'Traceable, overlapping text segments',
+          },
+          {
+            label: 'Ready documents',
+            value: store.documents.filter((d) => d.status === 'READY').length,
+            icon: CheckCheck,
+            note: 'Mock embedding lifecycle',
+          },
+        ]"
+        :key="stat.label"
+        class="stat-card"
+      >
+        <div class="stat-label">{{ stat.label }}<component :is="stat.icon" :size="16" /></div>
+        <div class="stat-value">{{ stat.value }}</div>
+        <div class="stat-note">{{ stat.note }}</div>
+      </div>
+    </div>
+    <RequestFeedback
+      :state="request.state.value"
+      :error="request.error.value"
+      @retry="load"
+      @abort="request.abort"
+    />
+    <div class="knowledge-layout">
+      <aside class="panel collections">
+        <div class="panel-title">
+          <h2>Collections</h2>
+          <span class="tiny-badge">{{ store.bases.length }}</span>
+        </div>
+        <button
+          v-for="base in store.bases"
+          :key="base.id"
+          class="collection"
+          :class="{ selected: store.selectedId === base.id }"
+          @click="store.selectedId = base.id"
+        >
+          <div class="collection-icon"><FolderOpen :size="19" /></div>
+          <div>
+            <strong>{{ base.name }}</strong
+            ><small>{{ base.documentCount }} documents · {{ base.chunkCount }} chunks</small>
+          </div>
+        </button>
+        <div v-if="!store.bases.length" class="empty-inline">Create your first collection.</div>
+        <div class="collection-note">
+          <Database :size="18" />
+          <p>
+            Your files stay in this local workspace. Embedding and PDF extraction are simulated.
+          </p>
+        </div>
+      </aside>
+      <section class="panel documents">
+        <div class="panel-title">
+          <div>
+            <h2>{{ selected?.name || 'Your knowledge starts here' }}</h2>
+            <p>{{ selected?.description || 'Create a collection to add documents.' }}</p>
+          </div>
+          <div v-if="selected" class="document-actions">
+            <el-button
+              :icon="Pencil"
+              aria-label="Rename knowledge base"
+              :disabled="request.loading.value"
+              @click="rename"
+            /><el-button
+              :icon="Trash2"
+              aria-label="Delete knowledge base"
+              :disabled="request.loading.value"
+              @click="remove"
+            />
+          </div>
+        </div>
+        <div
+          v-if="selected"
+          class="upload-zone"
+          :class="{ dragging, disabled: uploadRequest.loading.value }"
+          role="button"
+          tabindex="0"
+          aria-label="Upload documents"
+          @click="!uploadRequest.loading.value && fileInput?.click()"
+          @keydown.enter="fileInput?.click()"
+          @dragover.prevent="dragging = true"
+          @dragleave="dragging = false"
+          @drop.prevent="drop"
+        >
+          <UploadCloud :size="28" /><strong>{{
+            uploadRequest.loading.value
+              ? 'Uploading documents…'
+              : 'Drop your documents here, or browse files'
+          }}</strong
+          ><span>PDF, TXT, MD · up to 5 MB per file</span
+          ><input
+            ref="fileInput"
+            type="file"
+            hidden
+            multiple
+            accept=".pdf,.txt,.md"
+            data-testid="knowledge-upload"
+            @change="fileChange"
+          />
+        </div>
+        <RequestFeedback
+          :state="uploadRequest.state.value"
+          :error="uploadRequest.error.value"
+          @retry="fileInput?.click()"
+          @abort="uploadRequest.abort"
+        />
+        <div v-if="selected" class="documents-toolbar">
+          <span>{{ store.selectedDocuments.length }} documents</span
+          ><el-button text :icon="RefreshCw" :disabled="request.loading.value" @click="load"
+            >Refresh</el-button
+          >
+        </div>
+        <el-table v-if="store.selectedDocuments.length" :data="store.selectedDocuments" row-key="id"
+          ><el-table-column label="DOCUMENT" min-width="205"
+            ><template #default="{ row }"
+              ><div class="document-name">
+                <FileText :size="17" />
+                <div>
+                  <strong>{{ row.name }}</strong
+                  ><small
+                    >{{ row.type }} · {{ (row.size / 1024).toFixed(1) }} KB ·
+                    {{ formatDate(row.uploadedAt) }}</small
+                  >
+                </div>
+              </div></template
+            ></el-table-column
+          ><el-table-column label="PARSING" min-width="105"
+            ><template #default="{ row }"
+              ><el-tag :type="tagType(row.status)" effect="plain" size="small">{{
+                row.status
+              }}</el-tag></template
+            ></el-table-column
+          ><el-table-column label="CHUNKS" prop="chunkCount" width="78" /><el-table-column
+            label="EMBEDDING"
+            min-width="110"
+            ><template #default="{ row }"
+              ><el-tag :type="tagType(row.embeddingStatus)" effect="plain" size="small">{{
+                row.embeddingStatus
+              }}</el-tag></template
+            ></el-table-column
+          ><el-table-column label="" width="77"
+            ><template #default="{ row }"
+              ><button
+                v-if="row.status === 'FAILED'"
+                class="icon-button"
+                aria-label="Retry parsing"
+                :disabled="request.loading.value"
+                @click="retry(row.id)"
+              >
+                <RefreshCw :size="14" /></button
+              ><button
+                class="icon-button"
+                aria-label="Delete document"
+                :disabled="request.loading.value"
+                @click="deleteDocument(row.id)"
+              >
+                <Trash2 :size="14" /></button></template></el-table-column
+        ></el-table>
+        <div v-else class="empty-state">
+          <FileText :size="29" />
+          <h3>No documents yet</h3>
+          <p>Upload a file to watch the indexing pipeline in action.</p>
+        </div>
+        <div
+          v-for="doc in store.selectedDocuments.filter((d) => d.status === 'FAILED')"
+          :key="doc.id"
+          class="error-panel"
+        >
+          <p>
+            <strong>{{ doc.name }}</strong
+            ><br />{{ doc.error }}
+          </p>
+          <el-button size="small" @click="retry(doc.id)">Retry parsing</el-button>
+        </div>
+        <div class="pipeline">
+          <span
+            v-for="(step, index) in ['Upload', 'Parse', 'Chunk', 'Mock embedding', 'Ready']"
+            :key="step"
+            ><span class="pipeline-number">{{ index + 1 }}</span
+            >{{ step }}</span
+          >
+        </div>
+      </section>
+    </div>
+  </div>
+</template>
+<style scoped>
+.knowledge-layout {
+  display: grid;
+  grid-template-columns: 265px minmax(0, 1fr);
+  gap: 22px;
+}
+.collections {
+  padding: 22px 15px;
+  display: flex;
+  flex-direction: column;
+}
+.collections .panel-title {
+  padding: 0 7px;
+}
+.collection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  text-align: left;
+  border-radius: 7px;
+  padding: 14px 10px;
+  margin: 3px 0;
+}
+.collection.selected {
+  background: var(--green-soft);
+  border-color: var(--border);
+}
+.collection-icon {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: #8ca170;
+}
+.collection strong {
+  font-size: 11px;
+  display: block;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+.collection small {
+  font-size: 9px;
+  color: var(--muted);
+  display: block;
+  margin-top: 6px;
+}
+.collection-note {
+  margin-top: auto;
+  padding: 35px 8px 5px;
+  color: #96a485;
+  font-size: 10px;
+  line-height: 1.9;
+}
+.collection-note p {
+  margin-top: 9px;
+}
+.document-actions {
+  display: flex;
+  gap: 6px;
+}
+.document-actions .el-button {
+  margin: 0;
+  padding: 7px;
+}
+.upload-zone {
+  border: 1px dashed #cdd8bb;
+  background: var(--surface-subtle);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 30px 15px;
+  color: #8b9f71;
+  cursor: pointer;
+}
+.upload-zone.dragging {
+  background: var(--green-soft);
+  border-color: var(--green);
+}
+.upload-zone.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.upload-zone strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: #748760;
+  margin: 11px 0 7px;
+}
+.upload-zone span {
+  font-size: 10px;
+  color: #a3ae93;
+}
+.documents-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 22px 0 5px;
+  color: #8b9780;
+  font-size: 11px;
+}
+.document-name {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 0;
+}
+.document-name strong {
+  font-size: 11px;
+  font-weight: 500;
+  display: block;
+}
+.document-name small {
+  font-size: 9px;
+  display: block;
+  color: #a4ae97;
+  margin-top: 4px;
+}
+.pipeline {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 25px;
+  padding-top: 23px;
+  font-size: 9px;
+  color: #9aa88a;
+}
+.pipeline > span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.pipeline-number {
+  border: 1px solid #dfe5d5;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 8px;
+}
+@media (max-width: 1000px) {
+  .knowledge-layout {
+    grid-template-columns: 1fr;
+  }
+  .collections {
+    display: none;
+  }
+}
+</style>

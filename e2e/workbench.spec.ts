@@ -65,15 +65,13 @@ test('knowledge upload indexes actual text and retrieval produces cited answer',
   page,
 }) => {
   await page.goto('/knowledge');
-  await page
-    .getByTestId('knowledge-upload')
-    .setInputFiles({
-      name: 'smoke-retrieval.md',
-      mimeType: 'text/markdown',
-      buffer: Buffer.from(
-        'Workbench retrieval finds source chunks. Streaming cancellation uses AbortController. These documents provide traceable evidence.',
-      ),
-    });
+  await page.getByTestId('knowledge-upload').setInputFiles({
+    name: 'smoke-retrieval.md',
+    mimeType: 'text/markdown',
+    buffer: Buffer.from(
+      'Workbench retrieval finds source chunks. Streaming cancellation uses AbortController. These documents provide traceable evidence.',
+    ),
+  });
   await expect(page.getByText('smoke-retrieval.md', { exact: true })).toBeVisible();
   await expect(
     page
@@ -135,4 +133,61 @@ test('settings theme and mobile navigation work', async ({ page }) => {
   await page.getByRole('link', { name: 'Knowledge Base', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Knowledge Base', exact: true })).toBeVisible();
   await page.screenshot({ path: 'docs/screenshots/mobile.png', fullPage: true });
+});
+test('chat timeout has explicit state and can be retried', async ({ page }) => {
+  await page.goto('/settings');
+  await page.getByRole('spinbutton', { name: 'Request timeout' }).fill('1000');
+  await page.getByRole('spinbutton', { name: 'Request timeout' }).press('Tab');
+  await page.goto('/chat');
+  await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Next request behavior' }).press('Enter');
+  await page.getByRole('option', { name: 'Simulate timeout' }).click();
+  await page.getByRole('textbox', { name: 'Message', exact: true }).fill('Timeout recovery test');
+  await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await expect(page.getByText('TIMEOUT', { exact: true })).toBeVisible();
+  await page.goto('/settings');
+  await page.getByRole('spinbutton', { name: 'Request timeout' }).fill('60000');
+  await page.getByRole('spinbutton', { name: 'Request timeout' }).press('Tab');
+  await page.goto('/chat');
+  await page.getByRole('button', { name: 'Regenerate response' }).click();
+  await expect(page.getByText('Streaming response', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Stop generation', exact: true })).not.toBeVisible({
+    timeout: 20000,
+  });
+});
+test('route change aborts generation and leaves chat usable', async ({ page }) => {
+  await page.goto('/chat');
+  await page.getByRole('button', { name: 'New conversation', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Message', exact: true })
+    .fill('Navigate while streaming');
+  await page.getByRole('button', { name: 'Send message', exact: true }).click();
+  await expect(page.getByText('Streaming response', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Knowledge Base', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Knowledge Base', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'AI Chat 01', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Message', exact: true })).toBeEnabled();
+  await expect(page.getByText('Generation stopped · partial response retained')).toBeVisible();
+});
+test('failed documents expose a parsing retry and empty search has a helpful state', async ({
+  page,
+}) => {
+  await page.goto('/knowledge');
+  await page
+    .getByTestId('knowledge-upload')
+    .setInputFiles({ name: 'empty-smoke.txt', mimeType: 'text/plain', buffer: Buffer.from('') });
+  await expect(page.getByText('Document has no readable text.', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Retry parsing', exact: true }).last().click();
+  await expect(
+    page
+      .getByRole('row')
+      .filter({ hasText: 'empty-smoke.txt' })
+      .getByText('FAILED', { exact: true })
+      .first(),
+  ).toBeVisible();
+  await page.getByRole('link', { name: 'Retrieval Debug', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Retrieval query' }).fill('qzvzxk928381');
+  await page.getByRole('button', { name: 'Search knowledge' }).click();
+  await expect(page.getByRole('heading', { name: 'No matching chunks' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Generate answer' })).not.toBeVisible();
 });
