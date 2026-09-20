@@ -86,12 +86,18 @@ test('knowledge upload indexes actual text and retrieval produces cited answer',
   await page.getByRole('textbox', { name: 'Retrieval query' }).fill('retrieval');
   await page.getByRole('button', { name: 'Search knowledge' }).click();
   await expect(page.getByRole('button', { name: 'Generate answer' })).toBeVisible();
+  const excerpts = await page.locator('.retrieval-card > p').allTextContents();
   await page.getByRole('button', { name: 'Generate answer' }).click();
   await expect(page.getByRole('heading', { name: '03 · Generated answer' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Stop generation', exact: true })).not.toBeVisible({
     timeout: 20000,
   });
   await expect(page.getByText('Source 1', { exact: true })).toBeVisible();
+  const quotes = page.locator('.answer-panel .markdown blockquote');
+  await expect(quotes).toHaveCount(Math.min(excerpts.length, 3));
+  for (const [index, excerpt] of excerpts.slice(0, 3).entries()) {
+    await expect(quotes.nth(index)).toContainText(excerpt.slice(0, 230));
+  }
 });
 test('tool workflow succeeds, fails and recovers', async ({ page }) => {
   await page.goto('/tools');

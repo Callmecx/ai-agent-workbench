@@ -58,6 +58,7 @@ test('portfolio screenshots show completed workflows with isolated demo data', a
   await page.getByRole('button', { name: 'Search knowledge', exact: true }).click();
   await expect(page.locator('.retrieval-card')).not.toHaveCount(0);
   await expect(page.getByRole('meter').first()).toBeVisible();
+  const firstExcerpt = await page.locator('.retrieval-card > p').first().textContent();
   await shot(page, 'retrieval');
   await page.getByRole('button', { name: 'Generate answer' }).click();
   await expect(page.locator('.answer-panel .markdown')).toContainText('Source');
@@ -65,6 +66,9 @@ test('portfolio screenshots show completed workflows with isolated demo data', a
     timeout: 20000,
   });
   await expect(page.locator('.citations .citation').first()).toBeVisible();
+  await expect(page.locator('.answer-panel .markdown blockquote').first()).toContainText(
+    firstExcerpt!.slice(0, 230),
+  );
   await page.locator('.answer-panel').scrollIntoViewIfNeeded();
   await shot(page, 'retrieval-answer');
 
