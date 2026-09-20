@@ -1,0 +1,44 @@
+[
+  {
+    "theme": "light",
+    "values": [
+      {
+        "name": "--text-primary",
+        "ratio": 15.165538505519269
+      },
+      {
+        "name": "--text-secondary",
+        "ratio": 5.992280494066566
+      },
+      {
+        "name": "--text-tertiary",
+        "ratio": 4.73932174805736
+      },
+      {
+        "name": "--accent-primary",
+        "ratio": 6.021038824084494
+      }
+    ]
+  },
+  {
+    "theme": "dark",
+    "values": [
+      {
+        "name": "--text-primary",
+        "ratio": 13.246620209405854
+      },
+      {
+        "name": "--text-secondary",
+        "ratio": 8.201422866688793
+      },
+      {
+        "name": "--text-tertiary",
+        "ratio": 6.027678216611642
+      },
+      {
+        "name": "--accent-primary",
+        "ratio": 7.30614644523058
+      }
+    ]
+  }
+]

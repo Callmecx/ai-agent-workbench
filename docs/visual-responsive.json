@@ -1,0 +1,7 @@
+{
+  "viewports": [1440, 1280, 1024, 390],
+  "themes": ["light", "dark"],
+  "routes": ["chat", "knowledge", "retrieval", "tools", "prompts", "monitoring", "settings"],
+  "failures": [],
+  "errors": []
+}

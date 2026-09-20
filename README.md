@@ -1,8 +1,16 @@
 # AI Agent Workbench
 
-一个可在本地运行、无需 API Key 即可演示的 AI 应用工作台。面向 AI 大模型前端 / AI 应用开发岗位，覆盖对话、知识库、检索调试、工具执行、Prompt 版本管理和可观测性。
+A production-style AI application frontend demonstrating streaming chat, RAG interaction, agent tool execution, prompt engineering and observability.
 
-**Vue 3 · TypeScript · Vite · Pinia · Element Plus · Express · ECharts**
+**Vue 3 · TypeScript · Node.js · Streaming · RAG · Agent · Prompt · Monitoring**
+
+一个无需 API Key 即可本地演示的 AI 应用工作台：发送问题并观察流式输出；上传文档、检查检索来源；执行工具并展开参数与结果；版本化 Prompt，再在 Monitoring 观察请求指标。
+
+![AI Chat — light workspace, grounded conversation and model controls](docs/screenshots/chat.png)
+
+**30 秒了解项目：** 前端呈现完整的 Chat → Knowledge → Retrieval → Tool → Prompt → Monitoring 工作流，BFF 统一处理 SSE、取消、校验与服务端凭据。包含 7 个页面、深浅主题、独立设计变量、完整错误恢复和可重复的浏览器验收。运行 `npm install`、`npm run dev:all` 后打开 <http://127.0.0.1:5173>。
+
+这是本地单用户求职作品。Demo Mode 的回答、Embedding、PDF 解析、行情和天气为模拟数据；真实 TXT/MD 上传、分块、词法检索、安全算术与请求记录实际执行。下方文档说明每项能力的边界。
 
 ## Project Overview
 
@@ -247,6 +255,7 @@ npm run lint
 npm run test
 npm run build
 npm run test:smoke
+npm run test:visual
 ```
 
 Build 输出 `dist/` 与 `dist-server/`。本地生产预览：
@@ -257,17 +266,19 @@ npm start
 # 打开 http://127.0.0.1:3001；前端及 /api 同源
 ```
 
-浏览器测试默认使用已安装的 Microsoft Edge；其他平台可把 `playwright.config.ts` 的 channel 改为已安装的 Chrome，或安装 Playwright Chromium 并移除 channel。Smoke 使用 5174/3002 和独立临时数据库，不会改动主演示数据库。测试截图自动存入 `docs/screenshots/`。
+浏览器测试默认使用已安装的 Microsoft Edge；其他平台可把 Playwright 配置的 channel 改为已安装的 Chrome，或安装 Playwright Chromium 并移除 channel。Smoke 使用 5174/3002，视觉验收使用 5175/3004，各自使用临时数据库，不改动主演示数据。Smoke 保留原有 10 个行为场景；视觉验收另有 3 个测试，覆盖 7 页 × 4 种宽度 × 2 种主题、文字对比度、窄屏面板和完成态截图。请顺序执行两组浏览器测试。
+
+`npm run test:visual` 生成 `docs/screenshots/` 中的 1440×900 截图和额外断点截图。截图通过真实页面与本地 API 生成，Chat 使用明确标注的精简样例，其他工作流实际执行。访问任一路由并附加 `?presentation=1` 可隐藏 Diagnostics，Demo Mode 和数据来源说明仍然保留；此参数不清理数据，也不改变请求逻辑。
 
 ## Screenshots
 
-![AI Chat](docs/screenshots/chat.png)
+![Agent — inspectable execution timeline](docs/screenshots/agent.png)
 
-![Knowledge Base](docs/screenshots/knowledge.png)
+![Retrieval — source chunks and lexical score inspection](docs/screenshots/retrieval.png)
 
 ![Monitoring](docs/screenshots/monitoring.png)
 
-其余截图位于 [docs/screenshots](docs/screenshots)。完整验收记录见 [ACCEPTANCE_REPORT.md](docs/ACCEPTANCE_REPORT.md)。
+其余截图位于 [docs/screenshots](docs/screenshots)。第二阶段设计规范、视觉审阅、测试与限制见 [UI_UX_REVIEW.md](docs/UI_UX_REVIEW.md)。第一阶段功能验收归档见 [ACCEPTANCE_REPORT.md](docs/ACCEPTANCE_REPORT.md)。
 
 ## Limitations
 
